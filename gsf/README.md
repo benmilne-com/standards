@@ -1,6 +1,6 @@
 # Graph Standard Format (GSF)
 
-**Status:** Draft `v0.5.0`
+**Status:** Draft `v0.5.1`
 
 GSF is a small set of rules for visualizing relationships. It is the grammar a human or a
 machine follows so they do not have to decide how to show a relationship graph.
@@ -56,7 +56,7 @@ objects differ and whose `via` names the exchanger. The Issuer is inherent in th
 ```json
 {
   "format": "gsf",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "renderer": "d3-force",
   "view": { "level": "light", "degree": 1, "focus": ["Person A"] },
   "links": [
@@ -77,14 +77,15 @@ layout is the canonical default: topology is the signal, so structure emerges fr
 | Nature | Temporal, step-ordered | Structural, non-temporal |
 | Levels | Light / Medium / Heavy (detail) | light / medium / heavy (detail) |
 
-Both implement the same three value-layer primitives. The spec's `csf_interop` block defines the
-deterministic mapping; the one known loss is sequence order, since GSF is non-temporal.
+Both implement the same three value-layer primitives. The deterministic GSF <-> CSF mapping (and
+the value-layer profile) lives in the [standards README](../README.md); the one known loss is
+sequence order, since GSF is non-temporal.
 
 ## What's here
 
-- **[`gsf-0.5.0.json`](gsf-0.5.0.json)** - the rules: primitives, encoding, density, grammar
+- **[`gsf-0.5.1.json`](gsf-0.5.1.json)** - the rules: primitives, encoding, density, grammar
   (link/node/variables/weight), the seven entity types, relationship-type conventions,
-  anti-patterns, validation, `llm_instructions` (a drop-in prompt block), and 4 worked example
+  anti-patterns, validation, `llm_instructions` (a drop-in prompt block), and 3 worked example
   datasets.
 - **[`demo/gsf-embed.html`](demo/gsf-embed.html)** - a self-contained D3 reference renderer
   (only dependency is the D3 v7 CDN). A Light/Medium toggle shows the achromatic base (shape +
@@ -93,7 +94,7 @@ deterministic mapping; the one known loss is sequence order, since GSF is non-te
 
 ## Using it
 
-Paste `gsf-0.5.0.json` into an LLM and ask it to convert source material into a GSF dataset, or
+Paste `gsf-0.5.1.json` into an LLM and ask it to convert source material into a GSF dataset, or
 hand it to a renderer as the format contract. The `llm_instructions` and `validation` sections
 are written to be machine-consumed.
 

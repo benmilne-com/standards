@@ -11,7 +11,7 @@ moves.
 Rules for visualizing relationships as D3 force-directed graphs. Structural and non-temporal: what
 entities exist and how they connect. Built around four primitives (relationship, type, variables,
 weight) with an achromatic base (Light is black and white) and color as an optional overlay.
-Current: `v0.5.0`. Maintained here.
+Current: `v0.5.1`. Maintained here.
 
 ### CSF - Commons Stablecoin Format ([./csf](csf))
 
@@ -24,9 +24,35 @@ pinned reference.
 
 GSF and CSF are siblings. Both implement the three value-layer primitives - **ValueType** (what
 moves), **TransferType** (how it moves), **Exchange** (converting between) - in two modalities:
-GSF draws the structure, CSF draws the sequence. GSF's `csf_interop` block defines the
-deterministic mapping between them (lossy in one direction only: sequence order, since GSF is
-non-temporal).
+GSF draws the structure, CSF draws the sequence.
+
+### The value-layer profile in GSF
+
+How GSF expresses the three primitives (a profile, not core grammar):
+
+- **ValueType** - what moves. `node.type: concept`, `sub_type: value_type` (USD, USDC, SBC). The Issuer is inherent in the unit.
+- **TransferType** - how it moves. `node.type: system`, `sub_type: transfer_type` (ACH, Wire, Solana, Canton).
+- **Exchange** - converting between. A `transfers_via` link whose source/destination endpoint objects differ in `value_type` or `transfer_type`, with `via` naming the exchanger.
+
+Mapping: an Issuer `issues` a ValueType; a TransferType `supports` a ValueType; a stablecoin
+`represents` its fiat; a ValueType is `part_of` the Value Layer. Connect clusters through real
+rails or a genuine containing concept, never a synthetic anchor.
+
+### GSF and CSF interop
+
+The same payment documents as a CSF sequence and a GSF graph. The mapping is deterministic, lossy
+in one direction only (sequence order, since GSF is non-temporal):
+
+| CSF | GSF |
+|---|---|
+| participant | node (type from role) |
+| value leg (`->>`) | `transaction` link, or `transfers_via` when the leg converts |
+| data leg (`-->>`) | `instruction` link |
+| `[EXCHANGE]` | `transfers_via` with differing endpoints + `via` (self-referencing `via` for a self-loop) |
+| Light / Medium / Heavy | `view.level` (same meaning: amount of detail) |
+| sequence order | not represented - keep the CSF document if order matters |
+
+`CSF -> GSF -> CSF` loses step ordering; `GSF -> CSF -> GSF` is lossless for structure.
 
 ## The value layer
 
