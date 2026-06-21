@@ -1,0 +1,407 @@
+{
+  "name": "Graph Standard Format",
+  "abbreviation": "GSF",
+  "version": "0.5.0",
+  "status": "draft",
+  "description": "GSF is a small set of rules for visualizing relationships. It is the grammar a human or a machine follows so they do not have to decide how to show a relationship graph. GSF is the rules, not the data: a dataset conforms to GSF; a renderer applies GSF to that dataset to produce the picture. Like CSF (its sibling for funds-flow sequence diagrams), GSF keeps the grammar small so the catalog can stay large.",
+
+  "what_gsf_is": {
+    "gsf_is_the_rules": "GSF is a ruleset, not a dataset. This file is never visualized. It defines how any conforming dataset should be drawn.",
+    "three_things": {
+      "rules": "GSF - the grammar, primitives, encoding, and density behavior in this file.",
+      "dataset": "A {view, nodes, links} instance that conforms to GSF. This is what gets visualized.",
+      "renderer": "Takes rules + dataset and produces the visualization. d3-force is the canonical renderer."
+    },
+    "why": "So humans and computers do not have to think about how to show relationships. The rules fix the mapping: a type always means the same visual, a weight always means the same magnitude, a density level always reveals the same amount. The dataset stays dumb; the rules do the work.",
+    "relationship_to_csf": "CSF documents how value moves step by step (Mermaid sequence diagrams, temporal). GSF documents how entities are structurally related (D3 graphs, non-temporal). Same three value-layer primitives (ValueType, TransferType, Exchange), two modalities. See csf_interop."
+  },
+
+  "primitives": {
+    "description": "GSF has four primitives. Everything a renderer needs is one of these. Learn them and any relationship graph becomes legible without further decisions.",
+    "relationship": {
+      "definition": "A link between exactly two entities. Links create the graph; nodes only annotate entities that links already reference.",
+      "carries": "source, destination, type, and optionally variables, weight, direction, via.",
+      "rule": "If two things are related, that is a link. Never encode a relationship as a node property."
+    },
+    "type": {
+      "definition": "The qualitative classifier. link.type is what the relationship means (issues, supports, owns). node.type is what the entity is (person, org, concept, system).",
+      "drives": "Category encoding: color and shape. Type is the single most important visual signal in a GSF graph.",
+      "rule": "Type is an open string. Known types map to consistent color and shape; unknown types fall back to default styling."
+    },
+    "variables": {
+      "definition": "The detail bag on a link or node. Holds everything type does not. Optional.",
+      "splits_into": {
+        "value": "QUANTITATIVE. A single magnitude - amount, count, percentage, balance, score. Expressed as link.weight / node.weight, or a numeric variable. Drives size and width.",
+        "values": "QUALITATIVE. Categorical or descriptive attributes - status, label, jurisdiction, settlement type. Drives color, grouping, filtering, and tooltip detail."
+      },
+      "rule": "value (one quantitative number) drives magnitude; values (qualitative attributes) drive category. This is the whole encoding model."
+    },
+    "weight": {
+      "definition": "The quantitative magnitude of a link or node. The visual consequence of a value. Optional number.",
+      "drives": "Edge width (link.weight) and node size (node.weight). If absent, node size falls back to degree (number of links).",
+      "rule": "Weight is the only quantitative encoding input. Everything else is qualitative."
+    }
+  },
+
+  "encoding": {
+    "description": "The rules that map primitives to pixels, organized as channels so a viewer never decides what a mark means. Channels are layered: ACHROMATIC channels carry the story and print in black and white; the CHROMATIC channel (color) is an optional overlay added from Medium. Defaults here; a dataset may override via view.encoding.",
+    "principle": "Color is a later, optional layer - never the base. The base reads in B&W: shape for type, line style for relationship class, thickness for magnitude, arrowhead for direction. Anything color adds must already be legible without it.",
+    "achromatic_channels": {
+      "shape": "node.type -> shape (default_shapes). Entity category, no color needed.",
+      "line_style": "relationship class -> solid | dashed | dotted (line_styles). The categorical signal for edges in B&W. Mirrors CSF's solid value leg vs dashed data leg.",
+      "thickness": "link.weight -> edge width; node.weight (or degree if absent) -> node size. Quantitative magnitude.",
+      "arrowhead": "directed -> arrowhead; undirected -> none.",
+      "fill": "In Light, all nodes share one neutral fill; shape alone distinguishes type."
+    },
+    "default_shapes": {
+      "description": "Canonical shape per entity type. Pairs with color so type survives grayscale, print, and color blindness. A recommendation, not a requirement: a renderer MAY simplify to circles plus color, or a dataset MAY override via view.encoding.shape_by. Edges meet a shape at its bounding radius.",
+      "person": "circle",
+      "org": "rounded-rect",
+      "place": "diamond",
+      "event": "triangle",
+      "thing": "square",
+      "concept": "hexagon",
+      "system": "pill",
+      "default": "circle"
+    },
+    "line_styles": {
+      "description": "Relationship class to line style. The achromatic categorical channel for edges. A recommendation; types not listed default to solid.",
+      "solid": "Value or primary structural relationship - the substance. e.g. transaction, transfers_via, issues, supports, owns, controls, works_at.",
+      "dashed": "Data, instruction, or observation - carries no value. e.g. instruction, message, observed. This is CSF's dashed [DATA] leg.",
+      "dotted": "Derived, membership, or abstract link. e.g. represents, part_of, member_of, integration."
+    },
+    "chromatic_channel": {
+      "color": "node.type -> node color; link.type -> edge color. OPTIONAL overlay, off in Light, on from Medium. Refines, never replaces, the category that shape and line style already convey.",
+      "rule": "Color must never be the only signal. Remove color and shape + line style + thickness + arrowhead must still tell the story."
+    },
+    "detail_to_disclosure": "variables -> revealed progressively by density level. Light hides them; Heavy shows them all.",
+    "completeness_to_indicator": "node.more.exists true -> an expansion indicator. Never imply completeness falsely."
+  },
+
+  "density": {
+    "description": "Light / Medium / Heavy is the disclosure AND chroma dial: how much detail and color a renderer reveals. A RULE (it lives here, not in the dataset) so the same level renders the same way everywhere. Light is black-and-white and fast; color and detail accrue with the level. Matches CSF, whose Light/Medium/Heavy also mean amount-of-detail and whose diagrams read in B&W. Breadth (hops from focus) is a separate axis: view.degree.",
+    "light": "The story in black and white. Monochrome, no color. Type reads from node SHAPE; relationship class from LINE STYLE (solid = value/primary, dashed = data/instruction, dotted = derived/membership); magnitude from line THICKNESS and node size; direction from ARROWHEAD. No per-edge labels. Fast and print-ready, like a CSF sequence diagram. Answers: what is this and how does it connect, in B&W.",
+    "medium": "Adds color as an OVERLAY (node color by type, edge color by type), a legend, and variables on hover. more.exists indicators appear. Color refines the category that shape and line style already carry. Answers: how does it relate, in full.",
+    "heavy": "The full record. Adds all variables inline, transfer endpoint detail (value_type / transfer_type / via), and active expansion affordances. Answers: everything known. For diligence, audit, and investigation.",
+    "rule": "Levels are cumulative and add both detail and chroma. Light must be fully legible with zero color: anything color conveys at Medium must already read in B&W via shape, line style, thickness, or arrowhead."
+  },
+
+  "changelog": {
+    "0.5.0": [
+      "Restructured around four primitives (relationship, type, variables, weight) to shrink the grammar. The catalog (relationship-type conventions, examples) was trimmed; types remain open strings.",
+      "Made explicit that GSF is the rules, not the data: added what_gsf_is (rules / dataset / renderer).",
+      "Added the value vs values rule: value (one quantitative number, expressed as weight) drives magnitude; values (qualitative attributes) drive category. Added weight as the canonical quantitative field on links and nodes.",
+      "Added encoding section: the canonical primitive-to-visual mapping, with view.encoding as an optional dataset override.",
+      "BREAKING: density (level) now means disclosure depth, not breadth, and is decoupled from degree. view.degree is the breadth knob with per-level defaults, no longer forced. This aligns level with CSF's meaning and removes the old level==degree redundancy. Removed the separate complexity_levels block.",
+      "Trimmed relationship_types to a compact set of conventions; full vocabularies belong in datasets or profiles.",
+      "Folded value_layer_primitives into a concise value_layer_profile; compressed csf_interop.",
+      "Defined canonical per-type shapes (encoding.default_shapes): person circle, org rounded-rect, place diamond, event triangle, thing square, concept hexagon, system pill. A redundant channel to color so type survives grayscale, print, and color blindness. Recommendation, not requirement.",
+      "Made Light achromatic: color is an optional overlay added from Medium, never used in Light (like CSF). Reorganized encoding into achromatic channels (shape, line style, thickness, arrowhead) plus an optional chromatic overlay. Added encoding.line_styles (solid value / dashed data / dotted derived) as the B&W categorical edge channel."
+    ],
+    "0.4.0": [
+      "Renamed view.level 'mid' to 'medium'. Added 'instruction' relationship type and the CSF interop table. Added decision rules for transaction vs transfers_via and self-referencing via. Removed em-dashes (author style)."
+    ],
+    "0.3.0": [
+      "Renamed link.target to link.destination. Added endpoint objects {id, value_type, transfer_type} and link.via for exchanges. Made force-directed the canonical default."
+    ],
+    "0.2.0": [
+      "Added the seven entity-type categories, link direction, multi-link, expand/focus interaction, anti-patterns."
+    ],
+    "0.1.0": [
+      "Initial draft."
+    ]
+  },
+
+  "dataset_shape": {
+    "_comment": "The shape of a DATASET that conforms to GSF. This is not GSF; it is an instance GSF governs.",
+    "format": "gsf",
+    "version": "0.5.0",
+    "renderer": "d3-force",
+    "view": { "level": "light", "degree": 1, "focus": [] },
+    "nodes": [],
+    "links": []
+  },
+
+  "core_rules": [
+    "GSF is the rules for visualizing relationships, not the data and not a storage or analytics model.",
+    "A graph is created by links. Every link has source, destination, and type, and connects exactly two entities.",
+    "source and destination are entity ids (strings), or endpoint objects {id, value_type, transfer_type} for transfer links.",
+    "Nodes are optional annotations. A node may appear only if its id is a source, destination, or via in at least one link. No orphan nodes.",
+    "Type is qualitative: it drives shape (always) and color (Medium and up). Weight is quantitative and drives size and width. Variables hold the rest.",
+    "Light is achromatic and must read in black and white: shape carries type, line style carries relationship class, thickness carries weight, arrowhead carries direction. Color is an optional overlay from Medium, never the only signal.",
+    "Direction defaults to directed. Use undirected for symmetric relationships.",
+    "When value passes through an exchange or clearing mechanism, name it in link.via; the via entity is a graph member.",
+    "Density (level) is disclosure depth; degree is breadth. They are independent.",
+    "Every visible node must disclose whether more relationships exist when the source system knows (more.exists). Never imply completeness falsely.",
+    "Force-directed layout is the canonical default. Topology is the signal; do not impose visual structure that the topology does not carry.",
+    "Analytics (risk scores, centrality, clustering, alerts) run on the graph; they are not the graph and do not belong in a base dataset."
+  ],
+
+  "link": {
+    "description": "The atomic record. One relationship between exactly two entities.",
+    "required": {
+      "source": "Entity id (string), or endpoint object {id, value_type, transfer_type}.",
+      "destination": "Entity id (string), or endpoint object {id, value_type, transfer_type}.",
+      "type": "Relationship type (open string). Gives the relationship its meaning; drives edge color."
+    },
+    "optional": {
+      "weight": "Quantitative magnitude (number). Drives edge width.",
+      "variables": "Qualitative and other detail (object). Revealed by density level.",
+      "direction": "directed (default) or undirected.",
+      "via": "Exchange/clearing entity between source and destination (string or array). May equal source.id or destination.id for an on-its-own-book exchange. The via entity is a graph member.",
+      "id": "Stable link identifier, when the relationship must be referenced or cited.",
+      "label": "Display label. Defaults to type."
+    },
+    "endpoint_object": {
+      "id": "Entity id; must resolve to a graph member (source/destination/via somewhere).",
+      "value_type": "What is moving on this side (USD, USDC, EUR).",
+      "transfer_type": "How it moves on this side (wire, ach, solana, canton). A change in value_type or transfer_type between source and destination signals an Exchange; name the exchanger in via."
+    }
+  },
+
+  "node": {
+    "description": "An optional annotation for an entity already referenced by a link. Nodes do not create graph membership.",
+    "required": {
+      "id": "Entity id. Must match a source, destination, or via (or endpoint id) in at least one link. Use a stable id distinct from label when labels can collide."
+    },
+    "optional": {
+      "type": "Entity category (open string). Drives node color and shape. See entity_types.",
+      "label": "Display label. Defaults to id.",
+      "weight": "Quantitative magnitude (number). Drives node size. Defaults to degree if absent.",
+      "variables": "Qualitative and other detail. Common: sub_type, description, status.",
+      "more": "Expansion disclosure: {exists, count, types}. See more."
+    }
+  },
+
+  "variables": {
+    "description": "The extension point on links and nodes. Optional object. The type defines what the variables mean; GSF does not enforce a global ontology.",
+    "value_vs_values": "Distinguish the quantitative from the qualitative. The quantitative value (one magnitude) belongs in weight (or a clearly numeric variable) and drives size/width. Qualitative values (status, category, jurisdiction, label) drive color, grouping, and filtering.",
+    "rules": [
+      "If present, variables must be a JSON object.",
+      "Put relationship detail in link.variables, entity detail in node.variables.",
+      "Do not invent new top-level fields for type-specific detail. Use variables.",
+      "Keep the one quantitative magnitude in weight so renderers have a single, predictable size input."
+    ]
+  },
+
+  "view": {
+    "description": "The part of a dataset that tells the renderer what to show and how much. GSF defines these fields; a dataset sets them.",
+    "required": {
+      "level": {
+        "allowed": ["light", "medium", "heavy"],
+        "means": "Disclosure depth (see density). Not breadth."
+      },
+      "degree": {
+        "type": "integer",
+        "means": "Breadth: hops from a focus entity. Independent of level.",
+        "default_by_level": { "light": 1, "medium": 2, "heavy": 5 },
+        "note": "Defaults only. A dataset may set any degree at any level (e.g. a heavy-detail view of a 1-hop neighborhood)."
+      },
+      "focus": {
+        "type": "array of ids",
+        "means": "Where breadth is measured from. Empty for a full, unfocused graph."
+      }
+    },
+    "optional": {
+      "layout": {
+        "type": "force (default) | hierarchical | radial | timeline",
+        "note": "renderer (root field) names the engine; layout.type selects the algorithm within it. Force-directed unless overridden.",
+        "params": "Algorithm tuning. For force: charge, link_distance, collide_padding, alpha_decay, group_x_strength (default 0), center_y_strength (default 0).",
+        "group_by": "Optional node field for spatial grouping (e.g. type). Off by default; topology drives layout."
+      },
+      "encoding": {
+        "description": "Optional override of the default encoding. Omit to use the canonical rules in the encoding section.",
+        "color_by": "Node/link field driving color. Default: type.",
+        "shape_by": "Node field driving shape. Default: type.",
+        "size_by": "Node field driving size. Default: weight, else degree.",
+        "width_by": "Link field driving width. Default: weight.",
+        "cluster_by": "Optional node field for spatial grouping (sets layout.group_by)."
+      },
+      "filters": "Optional type filters. Filters never remove the more.exists disclosure obligation."
+    }
+  },
+
+  "entity_types": {
+    "description": "Seven open categories for node.type. Sub-types may be used directly as node.type; the renderer maps known sub-types to their parent for consistent color and shape. Custom types are allowed.",
+    "categories": {
+      "person": "An individual human. Sub-types: individual, officer, beneficiary, founder, agent.",
+      "place": "A geographic or jurisdictional location. Sub-types: country, region, city, address, jurisdiction. Often the Issuer in value-layer graphs.",
+      "thing": "A physical or digital artifact. Sub-types: asset, document, product, contract, certificate.",
+      "event": "A discrete occurrence shared by two or more entities. Sub-types: meeting, transaction, filing, transfer. Use an event node when the event is the shared context, not a variable on a link.",
+      "org": "A formal or informal organization. Sub-types: company, government, fund, regulator, exchange.",
+      "concept": "An abstract category, standard, or taxonomy root. Sub-types: value_type, transfer_type, standard, protocol. Valid when it carries genuine domain meaning (e.g. 'Value Layer'); not as a synthetic scope anchor.",
+      "system": "A platform, account, wallet, rail, or network endpoint. Sub-types: wallet, account, rail, network, api, case. Often the TransferType in value-layer graphs."
+    }
+  },
+
+  "relationship_types": {
+    "description": "link.type is an open string. These are common conventions, not a closed list. A dataset or profile may define its own. Each entry: typical direction and a one-line meaning. Put detail in variables.",
+    "conventions": {
+      "transaction": "directed - value moved, same value_type and transfer_type on both sides (no conversion). Detail: amount, value_type, transfer_type.",
+      "transfers_via": "directed - value moved with a conversion; endpoint objects carry each side, via names the exchanger. Use when value_type or transfer_type changes.",
+      "instruction": "directed - a data/instruction/receipt/confirmation leg that carries no value (CSF's dashed [DATA] arrow).",
+      "issues": "directed - an issuer (org/place) issues a value type (concept). Issuer is inherent in the ValueType.",
+      "issued_by": "directed - inverse of issues; use when the value type is the focus.",
+      "supports": "directed - a transfer mechanism or system supports a value type or concept.",
+      "represents": "directed - a derived value type is pegged to another (USDC represents USD).",
+      "part_of": "directed - an entity belongs to a larger concept, system, or taxonomy (USD part_of Value Layer).",
+      "owns": "directed - a person or org owns an asset, org, or system.",
+      "controls": "directed - a person or org exercises control over another entity.",
+      "works_at": "directed - a person is associated with an org.",
+      "member_of": "directed - a person or org is a member of a group or org.",
+      "located_at": "directed - an entity is at a place.",
+      "observed": "directed - a source system or analyst introduced an entity into the graph.",
+      "integration": "undirected - two systems are integrated.",
+      "partner": "undirected - two orgs are in a partnership.",
+      "coworker": "undirected - two people share a work context.",
+      "marriage": "undirected - a marital relationship.",
+      "sibling": "undirected - a sibling relationship."
+    }
+  },
+
+  "more": {
+    "description": "Discloses whether a visible node has relationships outside the current view. The honesty primitive.",
+    "fields": {
+      "exists": "boolean - true when more relationships exist beyond what is shown.",
+      "count": "integer or null - number of hidden relationships; null when existence is known but count is not.",
+      "types": "object - optional hidden counts keyed by relationship type; null per type when count is unknown."
+    },
+    "rules": [
+      "Include more when the source system can determine expansion status.",
+      "If exists is true, the renderer must show an expansion indicator.",
+      "Filters and permissions do not remove the obligation: if known relationships are hidden, exists stays true."
+    ]
+  },
+
+  "value_layer_profile": {
+    "description": "How GSF expresses the value-layer model. A profile, not core grammar: a recommended mapping of the three primitives onto GSF node and link types.",
+    "ValueType": "What moves. node.type concept, sub_type value_type (USD, USDC, SBC). Also carried on endpoint objects as value_type. The Issuer is inherent in the unit.",
+    "TransferType": "How it moves. node.type system, sub_type transfer_type (ACH, Wire, Solana, Canton). Also carried on endpoint objects as transfer_type.",
+    "Exchange": "Converting between. A transfers_via link whose source/destination endpoint objects differ in value_type or transfer_type, with via naming the exchanger.",
+    "mapping": "Issuer issues ValueType; TransferType supports ValueType; stablecoin represents fiat; ValueType part_of Value Layer. Connect clusters through real rails (e.g. SWIFT) or a genuine containing concept, never a synthetic anchor."
+  },
+
+  "csf_interop": {
+    "description": "Deterministic mapping to CSF (the sibling sequence-diagram format). Lossy in one direction only: GSF is non-temporal, so step order does not survive CSF -> GSF.",
+    "map": {
+      "CSF participant": "GSF node (type from role).",
+      "CSF value leg (->>)": "transaction link, or transfers_via when the leg converts.",
+      "CSF data leg (-->>)": "instruction link.",
+      "CSF [EXCHANGE]": "transfers_via with differing endpoints + via (self-referencing via for a self-loop exchange).",
+      "CSF Light/Medium/Heavy": "view.level (same meaning: amount of detail).",
+      "sequence order": "Not represented in GSF. Keep the CSF document if order matters."
+    }
+  },
+
+  "anti_patterns": {
+    "type_on_node_only": "Leaving links typeless and expecting readers to infer meaning from endpoint types. Use explicit link types; they carry meaning node types cannot.",
+    "synthetic_scope_anchor": "A hub node whose only job is to hold unrelated entities in one view. Use view.focus for scope. A concept node with genuine domain meaning (a taxonomy root, a containing system) is not this anti-pattern.",
+    "analytics_in_the_graph": "Embedding risk scores, centrality, or alerts as base graph fields. Run analytics downstream; keep the dataset to relationships.",
+    "relationship_as_property": "Encoding a relationship as a node variable instead of a link. If two entities relate, it is a link."
+  },
+
+  "validation": [
+    "Valid JSON, no comments.",
+    "Root has format (gsf), version, renderer (d3-force), view, links.",
+    "view.level is light, medium, or heavy. view.degree is an integer. view.focus is an array.",
+    "Every link has source, destination, type, and connects exactly two entities.",
+    "Endpoint objects use id as the entity identifier; a change in value_type/transfer_type implies an exchange.",
+    "If nodes are present, every node id appears as a source, destination, or via in some link. No orphans.",
+    "weight, if present, is a number. variables, if present, is an object.",
+    "more.exists, if present, is a boolean; more.count is an integer or null.",
+    "Analytics are not required for validity and must not be a base requirement."
+  ],
+
+  "llm_instructions": {
+    "role": "Convert source material into a GSF dataset for D3 force-directed visualization. Output the dataset (JSON), not the rules.",
+    "instructions": [
+      "Output valid JSON only: {format, version, renderer, view, nodes?, links}.",
+      "Encode every relationship as a link with source, destination, and type. Never as a node property.",
+      "Nodes are optional annotations; every node id must appear in a link (source, destination, or via).",
+      "Put the one quantitative magnitude in weight (drives size/width). Put qualitative detail in variables (drives color/grouping/tooltip).",
+      "Classify nodes with the seven categories: person, place, thing, event, org, concept, system.",
+      "For the value layer: Issuer (place/org) issues ValueType (concept); TransferType (system) supports ValueType; stablecoin represents fiat; ValueType part_of Value Layer. Represent an exchange as one transfers_via link with differing endpoint objects and a via.",
+      "Use undirected for symmetric relationships (sibling, coworker, marriage, partner, integration).",
+      "Set view.level by how much detail is wanted (light/medium/heavy) and view.degree by how many hops; they are independent.",
+      "Include node.more when expansion status is known; never imply completeness falsely.",
+      "Do not connect clusters with a synthetic anchor; use a real shared entity or a genuine containing concept.",
+      "Do not embed analytics, scores, or alerts unless they are source relationship data."
+    ]
+  },
+
+  "examples": {
+    "minimal": {
+      "format": "gsf",
+      "version": "0.5.0",
+      "renderer": "d3-force",
+      "view": { "level": "light", "degree": 1, "focus": ["example.com"] },
+      "links": [
+        { "source": "example.com", "destination": "Person A", "type": "observed" }
+      ]
+    },
+
+    "typed_with_weight": {
+      "_comment": "Relationships + types + weight (quantitative) + variables (qualitative). Medium discloses both.",
+      "format": "gsf",
+      "version": "0.5.0",
+      "renderer": "d3-force",
+      "view": { "level": "medium", "degree": 2, "focus": ["Acme"] },
+      "nodes": [
+        { "id": "Acme", "type": "org", "weight": 9, "more": { "exists": true, "count": null, "types": { "customer": null } } },
+        { "id": "Beth", "type": "person", "variables": { "role": "Founder" } },
+        { "id": "Northwind", "type": "org" }
+      ],
+      "links": [
+        { "source": "Beth", "destination": "Acme", "type": "works_at", "variables": { "role": "CEO", "status": "active" } },
+        { "source": "Acme", "destination": "Northwind", "type": "customer", "weight": 250000, "variables": { "status": "active", "since": "2024" } }
+      ]
+    },
+
+    "value_layer": {
+      "_comment": "Issuer issues ValueType; rail supports it; stablecoin represents fiat; ValueType part_of the Value Layer concept. Type drives color; no synthetic anchor.",
+      "format": "gsf",
+      "version": "0.5.0",
+      "renderer": "d3-force",
+      "view": { "level": "medium", "degree": 5, "focus": [] },
+      "nodes": [
+        { "id": "Value Layer", "type": "concept", "variables": { "sub_type": "concept" } },
+        { "id": "United States", "type": "place", "variables": { "sub_type": "country" } },
+        { "id": "USD", "type": "concept", "variables": { "sub_type": "value_type" } },
+        { "id": "USDC", "type": "concept", "variables": { "sub_type": "value_type" } },
+        { "id": "ACH", "type": "system", "variables": { "sub_type": "transfer_type" } },
+        { "id": "Ethereum", "type": "system", "variables": { "sub_type": "transfer_type" } }
+      ],
+      "links": [
+        { "source": "United States", "destination": "USD", "type": "issues" },
+        { "source": "ACH", "destination": "USD", "type": "supports" },
+        { "source": "Ethereum", "destination": "USDC", "type": "supports" },
+        { "source": "USDC", "destination": "USD", "type": "represents", "variables": { "peg_type": "fiat-backed" } },
+        { "source": "USD", "destination": "Value Layer", "type": "part_of" },
+        { "source": "USDC", "destination": "Value Layer", "type": "part_of" }
+      ]
+    },
+
+    "transfer_exchange": {
+      "_comment": "An Exchange: endpoint objects differ in value_type/transfer_type; via names the exchanger; weight is the amount.",
+      "format": "gsf",
+      "version": "0.5.0",
+      "renderer": "d3-force",
+      "view": { "level": "heavy", "degree": 1, "focus": ["Brale"] },
+      "nodes": [
+        { "id": "Sender", "type": "org" },
+        { "id": "Brale", "type": "org", "variables": { "sub_type": "exchange" } },
+        { "id": "Recipient Wallet", "type": "system", "variables": { "sub_type": "wallet" } }
+      ],
+      "links": [
+        {
+          "source": { "id": "Sender", "value_type": "USD", "transfer_type": "wire" },
+          "destination": { "id": "Recipient Wallet", "value_type": "USDC", "transfer_type": "solana" },
+          "type": "transfers_via",
+          "via": "Brale",
+          "weight": 1000,
+          "variables": { "exchange": "USD -> USDC", "rate": 1.0 }
+        }
+      ]
+    }
+  }
+}

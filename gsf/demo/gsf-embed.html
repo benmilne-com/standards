@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Value Layer - GSF Visualization</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#1e293b}
+.tbtn{padding:9px 16px;font-size:12px;font-weight:500;color:#64748b;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:color .1s}
+.tbtn.on{color:#0f172a;border-bottom-color:#3a86ff}
+.tbtn:hover:not(.on){color:#0f172a}
+#gtip{position:absolute;pointer-events:none;opacity:0;transition:opacity .12s;z-index:5;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:7px 10px;font-size:11px;max-width:200px;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+#gtip strong{display:block;color:#0f172a;font-weight:500;margin-bottom:2px}
+#gtip em{color:#64748b;font-style:normal;font-size:10px}
+#gtip small{display:block;color:#94a3b8;font-size:10px;margin-top:3px;font-style:italic}
+.gli{display:flex;align-items:center;gap:5px;font-size:11px;color:#475569}
+.gld{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.gll{width:14px;height:3px;border-radius:2px;flex-shrink:0}
+.lvl{font-size:10px;padding:3px 10px;border:1px solid #e2e8f0;background:#fff;color:#64748b;border-radius:99px;cursor:pointer}
+.lvl.on{background:#0f172a;color:#fff;border-color:#0f172a}
+</style>
+</head>
+<body>
+
+<div>
+  <div style="display:flex;border-bottom:1px solid #e2e8f0">
+    <button class="tbtn on" data-k="value-layer">Value layer</button>
+    <button class="tbtn" data-k="visa-settlement">Visa settlement</button>
+  </div>
+  <div style="padding:8px 14px 4px">
+    <div id="ghl" style="font-size:12px;font-weight:500;color:#0f172a"></div>
+    <div id="ghs" style="font-size:10px;color:#94a3b8;margin-top:2px"></div>
+  </div>
+  <div style="padding:0 14px 6px;display:flex;gap:6px;align-items:center">
+    <span style="font-size:10px;color:#94a3b8;margin-right:2px">density</span>
+    <button class="lvl on" data-l="light">Light · B&amp;W</button>
+    <button class="lvl" data-l="medium">Medium · color</button>
+  </div>
+  <div id="gwrap" style="position:relative;border-radius:8px;overflow:hidden;margin:0 6px;background:#f8fafc">
+    <svg id="gg" viewBox="0 0 720 500" preserveAspectRatio="xMidYMid meet" style="width:100%;display:block;background:#f8fafc"></svg>
+    <div id="gtip"></div>
+  </div>
+  <div id="gleg" style="display:flex;flex-wrap:wrap;gap:12px;padding:8px 14px 2px"></div>
+  <div style="font-size:10px;color:#94a3b8;padding:2px 14px 10px">Hover a node or edge for details · click a node to highlight its connections · drag to reposition · click background to reset</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script>
+const W=720,H=500;
+
+const TM={
+  person: {c:'#e05c8a',l:'Person'},
+  org:    {c:'#e07340',l:'Organization'},
+  place:  {c:'#e09c2a',l:'Issuer / place'},
+  concept:{c:'#3a86ff',l:'Concept / value type'},
+  system: {c:'#2db37a',l:'Transfer system'},
+  event:  {c:'#8b7fd4',l:'Event'},
+  thing:  {c:'#8a9099',l:'Thing'}
+};
+
+const DS={
+  'value-layer':{
+    l:'The value layer',
+    s:'Global issuers, currencies, and transfer mechanisms - sample from benmilne.com/the-value-layer-expanded',
+    charge:-230,lDist:95,strength:.55,
+    gsf:{
+      nodes:[
+        {id:'Value Layer',type:'concept',sub_type:'concept',description:'The global system of monetary representation and value transfer - every currency, issuer, and rail exists within it'},
+        {id:'United States',type:'place',sub_type:'country'},
+        {id:'European Union',type:'org',sub_type:'government'},
+        {id:'United Kingdom',type:'place',sub_type:'country'},
+        {id:'Romania',type:'place',sub_type:'country'},
+        {id:'Brazil',type:'place',sub_type:'country'},
+        {id:'Japan',type:'place',sub_type:'country'},
+        {id:'USD',type:'concept',sub_type:'value_type',description:'US Dollar'},
+        {id:'EUR',type:'concept',sub_type:'value_type',description:'Euro'},
+        {id:'GBP',type:'concept',sub_type:'value_type',description:'British Pound'},
+        {id:'RON',type:'concept',sub_type:'value_type',description:'Romanian Leu'},
+        {id:'BRL',type:'concept',sub_type:'value_type',description:'Brazilian Real'},
+        {id:'JPY',type:'concept',sub_type:'value_type',description:'Japanese Yen'},
+        {id:'USDC',type:'concept',sub_type:'value_type',description:'USD Coin - stablecoin'},
+        {id:'USDT',type:'concept',sub_type:'value_type',description:'Tether - stablecoin'},
+        {id:'ACH',type:'system',sub_type:'transfer_type',description:'Automated Clearing House'},
+        {id:'FedNow',type:'system',sub_type:'transfer_type',description:'Federal Reserve real-time rail'},
+        {id:'Fedwire',type:'system',sub_type:'transfer_type',description:'Federal Reserve wire transfer'},
+        {id:'SEPA',type:'system',sub_type:'transfer_type',description:'Single Euro Payments Area'},
+        {id:'CHAPS',type:'system',sub_type:'transfer_type',description:'UK high-value same-day settlement'},
+        {id:'Faster Payments',type:'system',sub_type:'transfer_type',description:'UK real-time rail'},
+        {id:'ReGis',type:'system',sub_type:'transfer_type',description:'Romania RTGS'},
+        {id:'PIX',type:'system',sub_type:'transfer_type',description:'Brazil instant payments'},
+        {id:'Zengin',type:'system',sub_type:'transfer_type',description:'Japan funds transfer'},
+        {id:'SWIFT',type:'system',sub_type:'transfer_type',description:'Global correspondent banking - cross-currency'},
+        {id:'Ethereum',type:'system',sub_type:'transfer_type',description:'Programmable blockchain'},
+        {id:'Solana',type:'system',sub_type:'transfer_type',description:'High-throughput blockchain'}
+      ],
+      links:[
+        {source:'United States',destination:'USD',type:'issues'},
+        {source:'European Union',destination:'EUR',type:'issues'},
+        {source:'United Kingdom',destination:'GBP',type:'issues'},
+        {source:'Romania',destination:'RON',type:'issues'},
+        {source:'Brazil',destination:'BRL',type:'issues'},
+        {source:'Japan',destination:'JPY',type:'issues'},
+        {source:'ACH',destination:'USD',type:'supports'},
+        {source:'FedNow',destination:'USD',type:'supports'},
+        {source:'Fedwire',destination:'USD',type:'supports'},
+        {source:'SEPA',destination:'EUR',type:'supports'},
+        {source:'CHAPS',destination:'GBP',type:'supports'},
+        {source:'Faster Payments',destination:'GBP',type:'supports'},
+        {source:'ReGis',destination:'RON',type:'supports'},
+        {source:'PIX',destination:'BRL',type:'supports'},
+        {source:'Zengin',destination:'JPY',type:'supports'},
+        {source:'SWIFT',destination:'USD',type:'supports'},
+        {source:'SWIFT',destination:'EUR',type:'supports'},
+        {source:'SWIFT',destination:'GBP',type:'supports'},
+        {source:'USDC',destination:'USD',type:'represents'},
+        {source:'USDT',destination:'USD',type:'represents'},
+        {source:'Ethereum',destination:'USDC',type:'supports'},
+        {source:'Ethereum',destination:'USDT',type:'supports'},
+        {source:'Solana',destination:'USDC',type:'supports'},
+        {source:'USD',destination:'Value Layer',type:'part_of'},
+        {source:'EUR',destination:'Value Layer',type:'part_of'},
+        {source:'GBP',destination:'Value Layer',type:'part_of'},
+        {source:'RON',destination:'Value Layer',type:'part_of'},
+        {source:'BRL',destination:'Value Layer',type:'part_of'},
+        {source:'JPY',destination:'Value Layer',type:'part_of'},
+        {source:'USDC',destination:'Value Layer',type:'part_of'},
+        {source:'USDT',destination:'Value Layer',type:'part_of'}
+      ]
+    }
+  },
+  'visa-settlement':{
+    l:'Visa × Brale stablecoin settlement',
+    s:'Card settlement rewired with SBC on Canton - benmilne.com/visa-stablecoin-settlement',
+    charge:-160,lDist:110,strength:.6,
+    gsf:{
+      nodes:[
+        {id:'Cardholder',type:'person',sub_type:'consumer'},
+        {id:'Card Issuer',type:'org',sub_type:'bank',description:'Issuing bank'},
+        {id:'Visa',type:'org',sub_type:'network',description:'Card network'},
+        {id:'Brale',type:'org',sub_type:'company',description:'Issuance, signing & settlement'},
+        {id:'Canton',type:'system',sub_type:'protocol',description:'Privacy-preserving institutional blockchain - ~13s settlement'},
+        {id:'Acquirer',type:'org',sub_type:'bank',description:'Merchant bank'},
+        {id:'Merchant',type:'org',sub_type:'company'},
+        {id:'SBC',type:'concept',sub_type:'value_type',description:'Brale stablecoin issued on Canton'},
+        {id:'USD',type:'concept',sub_type:'value_type',description:'US Dollar reserve'}
+      ],
+      links:[
+        {source:'Cardholder',destination:'Card Issuer',type:'transacts_with',direction:'directed'},
+        {source:'Card Issuer',destination:'Visa',type:'settlement_obligation',direction:'directed'},
+        {source:'Visa',destination:'Brale',type:'settlement_instruction',direction:'directed'},
+        {source:{id:'Brale',value_type:'USD',transfer_type:'wire'},destination:{id:'Canton',value_type:'SBC',transfer_type:'canton'},type:'transfers_via',direction:'directed',via:'Brale'},
+        {source:'Canton',destination:'Acquirer',type:'settles_to',direction:'directed'},
+        {source:'Acquirer',destination:'Merchant',type:'pays',direction:'directed'},
+        {source:'Brale',destination:'SBC',type:'issues',direction:'directed'},
+        {source:'Canton',destination:'SBC',type:'supports',direction:'directed'},
+        {source:'SBC',destination:'USD',type:'represents',direction:'directed'}
+      ]
+    }
+  }
+};
+
+function eid(ep){return typeof ep==='object'&&ep!==null?ep.id:ep;}
+
+function buildG(gsf){
+  const nm=new Map();
+  if(gsf.nodes) gsf.nodes.forEach(n=>nm.set(n.id,{...n,degree:0}));
+  gsf.links.forEach(l=>{
+    const s=eid(l.source),d=eid(l.destination||l.target);
+    if(!nm.has(s)) nm.set(s,{id:s,degree:0});
+    if(!nm.has(d)) nm.set(d,{id:d,degree:0});
+    nm.get(s).degree++;
+    nm.get(d).degree++;
+  });
+  return{
+    nodes:Array.from(nm.values()),
+    links:gsf.links.map(l=>{
+      const dest=l.destination||l.target;
+      return {
+        ...l,
+        _src:eid(l.source),
+        _dst:eid(dest),
+        _sEp:(typeof l.source==='object'&&l.source)||null,
+        _dEp:(typeof dest==='object'&&dest)||null,
+        source:eid(l.source),
+        target:eid(dest)
+      };
+    })
+  };
+}
+
+function R(d){return 8+Math.min(d.degree||0,9)*1.6;}
+function NC(d){return(TM[d.type]||TM.thing).c;}
+
+const LCOL={
+  issues:'#e09c2a', supports:'#2db37a', represents:'#3a86ff', part_of:'#8a9099',
+  transfers_via:'#8b7fd4', transacts_with:'#8a9099', settlement_obligation:'#e09c2a',
+  settlement_instruction:'#e07340', settles_to:'#2db37a', pays:'#3a86ff', issued_by:'#e09c2a'
+};
+function lc(l){return LCOL[l.type]||'#b8bec9';}
+function ltext(t){return(t||'related').replace(/_/g,' ');}
+
+// Canonical per-type shapes (GSF 0.5.0 encoding.default_shapes)
+const SHAPE={person:'circle',org:'rrect',place:'diamond',event:'triangle',thing:'square',concept:'hexagon',system:'pill'};
+function shp(d){return SHAPE[d.type]||'circle';}
+function hexPts(r){let p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-30);p.push(`${(Math.cos(a)*r).toFixed(2)},${(Math.sin(a)*r).toFixed(2)}`);}return p.join(' ');}
+function drawShape(g){
+  g.each(function(d){
+    const r=R(d),s=shp(d),sel=d3.select(this);
+    let el;
+    if(s==='square'){const a=r*1.7;el=sel.append('rect').attr('x',-a/2).attr('y',-a/2).attr('width',a).attr('height',a).attr('rx',2);}
+    else if(s==='rrect'){const w=r*2.3,h=r*1.5;el=sel.append('rect').attr('x',-w/2).attr('y',-h/2).attr('width',w).attr('height',h).attr('rx',5);}
+    else if(s==='pill'){const w=r*2.5,h=r*1.4;el=sel.append('rect').attr('x',-w/2).attr('y',-h/2).attr('width',w).attr('height',h).attr('rx',h/2);}
+    else if(s==='diamond'){const a=r*1.25;el=sel.append('polygon').attr('points',`0,${-a} ${a},0 0,${a} ${-a},0`);}
+    else if(s==='triangle'){const a=r*1.25;el=sel.append('polygon').attr('points',`0,${(-a).toFixed(2)} ${(a*0.92).toFixed(2)},${(a*0.8).toFixed(2)} ${(-a*0.92).toFixed(2)},${(a*0.8).toFixed(2)}`);}
+    else if(s==='hexagon'){el=sel.append('polygon').attr('points',hexPts(r*1.1));}
+    else{el=sel.append('circle').attr('r',r);}
+    el.attr('fill',nodeFill(d)).attr('fill-opacity',level==='light'?1:.88).attr('stroke','#f8fafc').attr('stroke-width',2);
+  });
+}
+function glyph(type,color){
+  const s=SHAPE[type]||'circle',c=8,r=6;let inner;
+  if(s==='square') inner=`<rect x="${c-r}" y="${c-r}" width="${2*r}" height="${2*r}" rx="1.5"/>`;
+  else if(s==='rrect') inner=`<rect x="1" y="3.5" width="14" height="9" rx="2.5"/>`;
+  else if(s==='pill') inner=`<rect x="1" y="4" width="14" height="8" rx="4"/>`;
+  else if(s==='diamond') inner=`<polygon points="${c},${c-r} ${c+r},${c} ${c},${c+r} ${c-r},${c}"/>`;
+  else if(s==='triangle') inner=`<polygon points="${c},${c-r} ${(c+r*0.92).toFixed(1)},${(c+r*0.8).toFixed(1)} ${(c-r*0.92).toFixed(1)},${(c+r*0.8).toFixed(1)}"/>`;
+  else if(s==='hexagon'){let p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-30);p.push(`${(c+Math.cos(a)*r).toFixed(1)},${(c+Math.sin(a)*r).toFixed(1)}`);}inner=`<polygon points="${p.join(' ')}"/>`;}
+  else inner=`<circle cx="${c}" cy="${c}" r="${r}"/>`;
+  return `<svg width="16" height="16" viewBox="0 0 16 16" style="flex-shrink:0"><g fill="${color}">${inner}</g></svg>`;
+}
+
+// Achromatic channels: line style by relationship class (GSF 0.5.0 encoding.line_styles)
+const LCLASS={instruction:'dashed',message:'dashed',observed:'dashed',settlement_instruction:'dashed',
+  represents:'dotted',part_of:'dotted',member_of:'dotted',integration:'dotted'};
+function ldash(l){const c=LCLASS[l.type];return c==='dashed'?'5,4':c==='dotted'?'1.5,3.5':null;}
+const NEUTRAL_N='#64748b', NEUTRAL_E='#94a3b8';
+function nodeFill(d){return level==='light'?NEUTRAL_N:NC(d);}
+function edgeCol(l){return level==='light'?NEUTRAL_E:lc(l);}
+function ewidth(l){return l.weight?Math.max(1.4,Math.min(Math.sqrt(l.weight)/8,6)):1.6;}
+
+let level='light', curKey='value-layer', sim=null;
+
+function render(key){
+  curKey=key;
+  const ds=DS[key];
+  document.getElementById('ghl').textContent=ds.l;
+  document.getElementById('ghs').textContent=ds.s;
+  const{nodes,links}=buildG(ds.gsf);
+  const svg=d3.select('#gg');
+  svg.selectAll('*').remove();
+
+  const tip=document.getElementById('gtip');
+  const moveTip=e=>{
+    const r=document.getElementById('gwrap').getBoundingClientRect();
+    let x=e.clientX-r.left+12,y=e.clientY-r.top-28;
+    if(x+205>r.width) x-=218;
+    tip.style.left=Math.max(2,x)+'px';
+    tip.style.top=Math.max(2,y)+'px';
+  };
+
+  const defs=svg.append('defs');
+  const mid=c=>'arr'+c.replace('#','');
+  [...new Set([NEUTRAL_E,...links.map(lc)])].forEach(c=>{
+    defs.append('marker').attr('id',mid(c))
+      .attr('viewBox','0 -3.5 7 7').attr('refX',6).attr('refY',0)
+      .attr('markerWidth',5).attr('markerHeight',5).attr('orient','auto')
+      .append('path').attr('d','M0,-3.5L7,0L0,3.5Z')
+      .attr('fill',c).attr('opacity',0.9);
+  });
+
+  const gL=svg.append('g');
+  const gH=svg.append('g');
+  const gN=svg.append('g');
+  nodes.forEach(n=>{n.x=W/2+(Math.random()-.5)*60;n.y=H/2+(Math.random()-.5)*60;});
+
+  const lSel=gL.selectAll('line').data(links).join('line')
+    .attr('stroke',d=>edgeCol(d))
+    .attr('stroke-width',d=>ewidth(d))
+    .attr('stroke-opacity',.6)
+    .attr('stroke-dasharray',d=>ldash(d))
+    .attr('marker-end',d=>d.direction==='directed'?`url(#${mid(level==='light'?NEUTRAL_E:lc(d))})`:null);
+
+  const hSel=gH.selectAll('line').data(links).join('line')
+    .attr('stroke','transparent')
+    .attr('stroke-width',12)
+    .style('cursor','pointer')
+    .on('mouseenter',(e,d)=>{
+      let b=`<strong>${ltext(d.type)}</strong><em>${d._src} → ${d._dst}</em>`;
+      if(d._sEp||d._dEp){
+        const f=ep=>ep?[ep.value_type,ep.transfer_type].filter(Boolean).join(' · '):null;
+        b+=`<small>${f(d._sEp)||d._src} → ${f(d._dEp)||d._dst}</small>`;
+      }
+      if(d.via) b+=`<small>via ${Array.isArray(d.via)?d.via.join(' · '):d.via}</small>`;
+      if(d.variables) b+=Object.entries(d.variables).map(([k,v])=>`<small>${k}: ${v}</small>`).join('');
+      tip.innerHTML=b; tip.style.opacity=1;
+      lSel.filter(x=>x===d).attr('stroke-opacity',1).attr('stroke-width',2.8);
+    })
+    .on('mousemove',moveTip)
+    .on('mouseleave',(e,d)=>{tip.style.opacity=0;lSel.filter(x=>x===d).attr('stroke-opacity',.6).attr('stroke-width',ewidth(d));});
+
+  const nSel=gN.selectAll('g.gn').data(nodes).join('g').attr('class','gn').style('cursor','pointer')
+    .call(d3.drag()
+      .on('start',(e,d)=>{if(!e.active)sim.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y;})
+      .on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y;})
+      .on('end',(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;})
+    );
+
+  drawShape(nSel);
+
+  nSel.append('text')
+    .attr('text-anchor','middle')
+    .attr('dy',d=>R(d)+11)
+    .attr('fill','#334155')
+    .attr('font-size',10)
+    .attr('font-family','system-ui,sans-serif')
+    .attr('pointer-events','none')
+    .text(d=>d.id.length>17?d.id.slice(0,16)+'…':d.id);
+
+  nSel
+    .on('mouseenter',(e,d)=>{
+      const m=TM[d.type]||{l:d.type};
+      tip.innerHTML=`<strong>${d.id}</strong><em>${m.l}${d.sub_type?' · '+d.sub_type:''} · ${d.degree} connection${d.degree!==1?'s':''}</em>${d.description?`<small>${d.description}</small>`:''}`;
+      tip.style.opacity=1;
+    })
+    .on('mousemove',moveTip)
+    .on('mouseleave',()=>{tip.style.opacity=0;})
+    .on('click',(e,d)=>{
+      e.stopPropagation();
+      const nb=new Set([d.id]);
+      links.forEach(l=>{
+        const s=l._src,t=l._dst;
+        if(s===d.id)nb.add(t);
+        if(t===d.id)nb.add(s);
+        if(l.via&&(s===d.id||t===d.id)){
+          (Array.isArray(l.via)?l.via:[l.via]).forEach(v=>nb.add(v));
+        }
+      });
+      nSel.attr('opacity',n=>nb.has(n.id)?1:.08);
+      lSel.attr('stroke-opacity',l=>(l._src===d.id||l._dst===d.id)?.75:.03);
+    });
+
+  svg.on('click',()=>{
+    nSel.attr('opacity',1);
+    lSel.attr('stroke-opacity',.55);
+  });
+
+  const nodeLeg=[...new Set(nodes.map(n=>n.type).filter(Boolean))]
+    .map(t=>{const m=TM[t]||{c:'#888',l:t};return`<div class="gli">${glyph(t,level==='light'?NEUTRAL_N:m.c)}${m.l}</div>`;}).join('');
+  let linkLeg;
+  if(level==='light'){
+    const ls=(dash,lbl)=>`<div class="gli"><svg width="22" height="8" style="flex-shrink:0"><line x1="1" y1="4" x2="21" y2="4" stroke="${NEUTRAL_E}" stroke-width="1.8"${dash?` stroke-dasharray="${dash}"`:''}/></svg>${lbl}</div>`;
+    linkLeg=ls(null,'value')+ls('5,4','data')+ls('1.5,3.5','derived');
+  }else{
+    linkLeg=[...new Set(links.map(l=>l.type))]
+      .map(t=>`<div class="gli"><div class="gll" style="background:${lc({type:t})}"></div>${ltext(t)}</div>`).join('');
+  }
+  document.getElementById('gleg').innerHTML=
+    nodeLeg+'<div style="flex-basis:100%;height:0"></div>'+linkLeg;
+
+  nSel.attr('transform',d=>`translate(${d.x},${d.y})`);
+
+  if(sim)sim.stop();
+  sim=d3.forceSimulation(nodes)
+    .force('link',d3.forceLink(links).id(d=>d.id).distance(ds.lDist).strength(ds.strength))
+    .force('charge',d3.forceManyBody().strength(ds.charge))
+    .force('center',d3.forceCenter(W/2,H/2).strength(.15))
+    .force('collide',d3.forceCollide(d=>R(d)+8))
+    .force('bound',()=>nodes.forEach(n=>{
+      const r=R(n)+2;
+      n.x=Math.max(r+8,Math.min(W-r-8,n.x));
+      n.y=Math.max(r+8,Math.min(H-r-8,n.y));
+    }))
+    .on('tick',()=>{
+      links.forEach(l=>{
+        const src=typeof l.source==='object'?l.source:{x:W/2,y:H/2,degree:0};
+        const tgt=typeof l.target==='object'?l.target:{x:W/2,y:H/2,degree:0};
+        const dx=tgt.x-src.x,dy=tgt.y-src.y,dist=Math.sqrt(dx*dx+dy*dy)||1;
+        const sr=R(src)+1,tr=R(tgt)+(l.direction==='directed'?9:1);
+        l._p=[src.x+(dx/dist)*sr, src.y+(dy/dist)*sr, tgt.x-(dx/dist)*tr, tgt.y-(dy/dist)*tr];
+      });
+      lSel.attr('x1',l=>l._p[0]).attr('y1',l=>l._p[1]).attr('x2',l=>l._p[2]).attr('y2',l=>l._p[3]);
+      hSel.attr('x1',l=>l._p[0]).attr('y1',l=>l._p[1]).attr('x2',l=>l._p[2]).attr('y2',l=>l._p[3]);
+      nSel.attr('transform',d=>`translate(${d.x??W/2},${d.y??H/2})`);
+    });
+
+  sim.alpha(1).restart();
+}
+
+document.querySelectorAll('.tbtn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tbtn').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  render(b.dataset.k);
+}));
+
+document.querySelectorAll('.lvl').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.lvl').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  level=b.dataset.l;
+  render(curKey);
+}));
+
+setTimeout(()=>render('value-layer'),80);
+</script>
+</body>
+</html>
