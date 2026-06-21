@@ -28,7 +28,15 @@ GSF draws the structure, CSF draws the sequence. GSF's `csf_interop` block defin
 deterministic mapping between them (lossy in one direction only: sequence order, since GSF is
 non-temporal).
 
-The value-layer model behind both: [benmilne.com/book/the-value-layer](https://benmilne.com/book/the-value-layer).
+## The value layer
+
+Both formats are tools for the value-layer model. The essays, in order:
+
+1. [The Value Layer of the Internet](https://benmilne.com/the-value-layer-of-the-internet) (2021) - the original framing: value moves as a ValueType (what) over a TransferType (how), anchored on value rather than geography.
+2. [The Value Layer - Expanded](https://benmilne.com/the-value-layer-expanded) (2022) - the model put to work: a catalog of issuers, currencies, and transfer mechanisms across the global stack. The Kumu map this catalog lived in is what GSF is built to replace.
+3. [Value Derivations](https://benmilne.com/value-derivations) (2025) - how the stack expands: stablecoins as liquidity derivations, protocols as transfer derivations, legacy rails going onchain. "Everything is a transfer."
+4. [Better Funds Flows](https://benmilne.com/better-funds-flows) (2025) - the post that introduced CSF.
+5. [The Value Layer](https://benmilne.com/book/the-value-layer) (2026) - the field guide that consolidates the three primitives.
 
 ## Licensing
 
