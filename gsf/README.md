@@ -1,6 +1,6 @@
 # Graph Standard Format (GSF)
 
-**Status:** Draft `v0.5.1`
+**Status:** Draft `v0.5.2`
 
 GSF is a small set of rules for visualizing relationships. It is the grammar a human or a
 machine follows so they do not have to decide how to show a relationship graph.
@@ -42,7 +42,7 @@ optional layer.
 - **Heavy** - the full record. All variables, transfer endpoint detail, expansion affordances.
 
 Color is never the only signal: remove it and shape, line style, thickness, and arrowhead still
-tell the story. Breadth (how many hops from focus) is a separate knob: `view.degree`.
+tell the story. Breadth (how many hops from focus) is a separate knob: `view.hops`.
 
 ## The value layer
 
@@ -56,9 +56,9 @@ objects differ and whose `via` names the exchanger. The Issuer is inherent in th
 ```json
 {
   "format": "gsf",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "renderer": "d3-force",
-  "view": { "level": "light", "degree": 1, "focus": ["Person A"] },
+  "view": { "level": "light", "hops": 1, "focus": ["Person A"] },
   "links": [
     { "source": "Person A", "destination": "Person B", "type": "message" }
   ]
@@ -83,7 +83,7 @@ sequence order, since GSF is non-temporal.
 
 ## What's here
 
-- **[`gsf-0.5.1.json`](gsf-0.5.1.json)** - the rules: primitives, encoding, density, grammar
+- **[`gsf-0.5.2.json`](gsf-0.5.2.json)** - the rules: primitives, encoding, density, grammar
   (link/node/variables/weight), the seven entity types, relationship-type conventions,
   anti-patterns, validation, `llm_instructions` (a drop-in prompt block), and 3 worked example
   datasets.
@@ -94,7 +94,7 @@ sequence order, since GSF is non-temporal.
 
 ## Using it
 
-Paste `gsf-0.5.1.json` into an LLM and ask it to convert source material into a GSF dataset, or
+Paste `gsf-0.5.2.json` into an LLM and ask it to convert source material into a GSF dataset, or
 hand it to a renderer as the format contract. The `llm_instructions` and `validation` sections
 are written to be machine-consumed.
 
