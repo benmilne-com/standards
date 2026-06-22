@@ -35,8 +35,19 @@
     "Density (level) is disclosure depth; hops is breadth. They are independent.",
     "Force-directed layout is the canonical default. Topology is the signal; do not impose structure the topology does not carry.",
     "Analytics (risk scores, centrality, clustering, alerts) run on the graph; they are not the graph and do not belong in a base dataset.",
-    "Every visible node should disclose whether more relationships exist when the source system knows (node.more). Never imply completeness falsely."
+    "Every visible node should disclose whether more relationships exist when the source system knows (node.more). Never imply completeness falsely.",
+    "One word, one meaning: each load-bearing term names exactly one thing across the spec. When a name would collide (breadth vs a node's edge count; destination vs a renderer's target field), rename or alias rather than overload. See terms."
   ],
+
+  "terms": {
+    "description": "The load-bearing words, each pinned to one meaning. One word, one meaning keeps the rules unambiguous so a renderer never has to guess.",
+    "weight": "A quantitative magnitude on a link or node (a number). The only quantitative encoding input; drives edge width and node size.",
+    "degree": "A node's edge count (graph-theoretic). The fallback for node size when weight is absent. Not breadth.",
+    "hops": "Breadth: edges traversed from a focus entity (view.hops). Not a node's edge count.",
+    "type": "The qualitative classifier. node.type is what an entity is; link.type is what a relationship means - namespaced, so they never collide.",
+    "value vs values": "value is the one quantitative magnitude (in weight); values are the qualitative attributes (in variables and type).",
+    "source / destination / target": "The two endpoints of a link. destination is canonical; a d3-force renderer aliases it to d3's target, which is accepted as an input synonym."
+  },
 
   "encoding": {
     "description": "The rules that map primitives to pixels, organized as channels so a viewer never decides what a mark means. ACHROMATIC channels carry the story and print in black and white; the CHROMATIC channel (color) is an optional overlay added from Medium. Defaults here; a dataset may override via view.encoding.",
@@ -194,8 +205,9 @@
 
   "detail_view": {
     "description": "Recommended disclosure order when a renderer reveals entity or link detail (card, panel, tooltip, or inline). Not a layout prescription - a content sequence so users develop muscle memory across renderers.",
-    "node_sequence": ["label (or id)", "type", "variables (by key)", "connections (from links)"],
-    "link_sequence": ["type", "source -> destination", "variables", "endpoints (value_type, transfer_type, via)"],
+    "node_sequence": ["label (or id)", "type", "weight (magnitude, if present)", "variables (by key)", "connections (from links)", "more (hidden-relationship indicator, if present)"],
+    "link_sequence": ["type", "source -> destination", "direction", "weight (magnitude, if present)", "variables", "endpoints (value_type, transfer_type, via)"],
+    "with_density": "Order is orthogonal to density depth: detail_view fixes the sequence, density fixes how far down it a level reveals. Light surfaces the first item or two; Medium adds variables; Heavy reveals the full sequence including weight, endpoints, and more.",
     "rule": "A renderer chooses the presentation (card, sidebar, tooltip, inline). GSF defines the content order, not the container."
   },
 
@@ -285,7 +297,7 @@
   },
 
   "changelog": {
-    "0.5.2": "Renamed view.degree to view.hops (eliminates ambiguity with node degree). Added detail_view section: recommended content sequence for cards, panels, and tooltips so users build muscle memory across renderers.",
+    "0.5.2": "Renamed view.degree to view.hops (eliminates ambiguity with node degree). Added detail_view section: recommended content sequence for cards, panels, and tooltips so users build muscle memory across renderers. Documented the destination->target alias (rules, link, validation). Added a terms glossary and the one-word-one-meaning tenet; extended detail_view to surface weight, direction, and more, and cross-linked it to density.",
     "0.5.1": "Shrunk the spec ~30% toward the grammar. Trimmed the changelog to a pointer (the repo is git). Cut the relationship-type catalog to a few illustrative conventions (types are open strings; real graphs invent their own). Compressed entity_types to one line per category. Merged core_rules into a lean rules list. Removed dataset_shape (it equalled the minimal example). Moved value_layer_profile and csf_interop out to the standards README, where the GSF<->CSF relationship and the value-layer mapping live alongside both formats.",
     "0.5.0": "Restructured around four primitives (relationship, type, variables, weight); added the value-vs-values rule, the encoding section, canonical per-type shapes, and achromatic Light (color is an optional overlay from Medium).",
     "prior": "0.1.0 - 0.4.0: see git history in the standards repo."
