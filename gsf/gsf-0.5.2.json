@@ -191,6 +191,13 @@
     ]
   },
 
+  "detail_view": {
+    "description": "Recommended disclosure order when a renderer reveals entity or link detail (card, panel, tooltip, or inline). Not a layout prescription - a content sequence so users develop muscle memory across renderers.",
+    "node_sequence": ["label (or id)", "type", "variables (by key)", "connections (from links)"],
+    "link_sequence": ["type", "source -> destination", "variables", "endpoints (value_type, transfer_type, via)"],
+    "rule": "A renderer chooses the presentation (card, sidebar, tooltip, inline). GSF defines the content order, not the container."
+  },
+
   "anti_patterns": {
     "type_on_node_only": "Leaving links typeless and inferring meaning from endpoint types. Use explicit link types.",
     "synthetic_scope_anchor": "A hub node whose only job is to hold unrelated entities in one view. Use view.focus for scope. A concept node with real domain meaning is not this.",
@@ -276,7 +283,7 @@
   },
 
   "changelog": {
-    "0.5.2": "Renamed view.degree to view.hops. Eliminates ambiguity with node degree (edge count), which is used for size fallback. No behavioral change; the field still means number of hops from focus.",
+    "0.5.2": "Renamed view.degree to view.hops (eliminates ambiguity with node degree). Added detail_view section: recommended content sequence for cards, panels, and tooltips so users build muscle memory across renderers.",
     "0.5.1": "Shrunk the spec ~30% toward the grammar. Trimmed the changelog to a pointer (the repo is git). Cut the relationship-type catalog to a few illustrative conventions (types are open strings; real graphs invent their own). Compressed entity_types to one line per category. Merged core_rules into a lean rules list. Removed dataset_shape (it equalled the minimal example). Moved value_layer_profile and csf_interop out to the standards README, where the GSF<->CSF relationship and the value-layer mapping live alongside both formats.",
     "0.5.0": "Restructured around four primitives (relationship, type, variables, weight); added the value-vs-values rule, the encoding section, canonical per-type shapes, and achromatic Light (color is an optional overlay from Medium).",
     "prior": "0.1.0 - 0.4.0: see git history in the standards repo."
