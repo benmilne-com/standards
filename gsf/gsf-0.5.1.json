@@ -28,6 +28,7 @@
     "GSF is the rules for visualizing relationships, not the data and not a storage or analytics model.",
     "A graph is created by links. Every link has source, destination, and type, and connects exactly two entities.",
     "source and destination are entity ids (strings), or endpoint objects {id, value_type, transfer_type} for transfer links.",
+    "Field naming: links use source and destination. A d3-force renderer MUST alias destination to d3's target when binding the simulation (d3's link force keys on source/target); target is accepted as an input synonym for destination, which stays canonical. The reference renderer does this in buildG().",
     "Nodes are optional annotations. A node may appear only if its id is a source, destination, or via in at least one link. No orphan nodes.",
     "Direction defaults to directed. Use undirected for symmetric relationships.",
     "When value passes through an exchange or clearing mechanism, name it in link.via; the via entity is a graph member.",
@@ -78,7 +79,7 @@
     "description": "The atomic record. One relationship between exactly two entities.",
     "required": {
       "source": "Entity id (string), or endpoint object {id, value_type, transfer_type}.",
-      "destination": "Entity id (string), or endpoint object {id, value_type, transfer_type}.",
+      "destination": "Entity id (string), or endpoint object {id, value_type, transfer_type}. Canonical link field; a d3-force renderer aliases it to d3's target on load (see the reference renderer buildG). target is accepted as an input synonym.",
       "type": "Relationship type (open string). Gives the relationship its meaning; drives edge color."
     },
     "optional": {
@@ -203,6 +204,7 @@
     "Root has format (gsf), version, renderer (d3-force), view, links.",
     "view.level is light, medium, or heavy. view.degree is an integer. view.focus is an array.",
     "Every link has source, destination, type, and connects exactly two entities.",
+    "Datasets may name the second endpoint destination (canonical) or target (synonym); a renderer treats them identically, aliasing to d3's target.",
     "Endpoint objects use id as the entity identifier; a change in value_type/transfer_type implies an exchange.",
     "If nodes are present, every node id appears as a source, destination, or via in some link. No orphans.",
     "weight, if present, is a number. variables, if present, is an object.",
